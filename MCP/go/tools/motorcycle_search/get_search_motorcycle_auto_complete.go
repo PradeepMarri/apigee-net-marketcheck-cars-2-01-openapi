@@ -1,0 +1,180 @@
+package tools
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/marketcheck-apis/mcp-server/config"
+	"github.com/marketcheck-apis/mcp-server/models"
+	"github.com/mark3labs/mcp-go/mcp"
+)
+
+func Get_search_motorcycle_auto_completeHandler(cfg *config.APIConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("Invalid arguments object"), nil
+		}
+		queryParams := make([]string, 0)
+		if val, ok := args["api_key"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("api_key=%v", val))
+		}
+		if val, ok := args["field"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("field=%v", val))
+		}
+		if val, ok := args["input"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("input=%v", val))
+		}
+		if val, ok := args["year"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("year=%v", val))
+		}
+		if val, ok := args["make"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("make=%v", val))
+		}
+		if val, ok := args["model"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("model=%v", val))
+		}
+		if val, ok := args["trim"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("trim=%v", val))
+		}
+		if val, ok := args["body_type"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("body_type=%v", val))
+		}
+		if val, ok := args["vehicle_type"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("vehicle_type=%v", val))
+		}
+		if val, ok := args["transmission"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("transmission=%v", val))
+		}
+		if val, ok := args["drivetrain"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("drivetrain=%v", val))
+		}
+		if val, ok := args["fuel_type"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("fuel_type=%v", val))
+		}
+		if val, ok := args["color"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("color=%v", val))
+		}
+		if val, ok := args["engine"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("engine=%v", val))
+		}
+		if val, ok := args["state"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("state=%v", val))
+		}
+		if val, ok := args["city"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("city=%v", val))
+		}
+		if val, ok := args["inventory_type"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("inventory_type=%v", val))
+		}
+		if val, ok := args["ignore_case"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("ignore_case=%v", val))
+		}
+		if val, ok := args["term_counts"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("term_counts=%v", val))
+		}
+		if val, ok := args["sort_by"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("sort_by=%v", val))
+		}
+		if val, ok := args["seller_type"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("seller_type=%v", val))
+		}
+		if val, ok := args["radius"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("radius=%v", val))
+		}
+		if val, ok := args["zip"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("zip=%v", val))
+		}
+		if val, ok := args["facet_min_count"]; ok {
+			queryParams = append(queryParams, fmt.Sprintf("facet_min_count=%v", val))
+		}
+		// Handle multiple authentication parameters
+		if cfg.APIKey != "" {
+			queryParams = append(queryParams, fmt.Sprintf("api_key=%s", cfg.APIKey))
+		}
+		if cfg.APIKey != "" {
+			queryParams = append(queryParams, fmt.Sprintf("append_api_key=%s", cfg.APIKey))
+		}
+		queryString := ""
+		if len(queryParams) > 0 {
+			queryString = "?" + strings.Join(queryParams, "&")
+		}
+		url := fmt.Sprintf("%s/search/motorcycle/auto-complete%s", cfg.BaseURL, queryString)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("Failed to create request", err), nil
+		}
+		// Set authentication based on auth type
+		// Handle multiple authentication parameters
+		// API key already added to query string
+		// API key already added to query string
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("Request failed", err), nil
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("Failed to read response body", err), nil
+		}
+
+		if resp.StatusCode >= 400 {
+			return mcp.NewToolResultError(fmt.Sprintf("API error: %s", body)), nil
+		}
+		// Use properly typed response
+		var result models.SearchAutoCompleteResponse
+		if err := json.Unmarshal(body, &result); err != nil {
+			// Fallback to raw text if unmarshaling fails
+			return mcp.NewToolResultText(string(body)), nil
+		}
+
+		prettyJSON, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("Failed to format JSON", err), nil
+		}
+
+		return mcp.NewToolResultText(string(prettyJSON)), nil
+	}
+}
+
+func CreateGet_search_motorcycle_auto_completeTool(cfg *config.APIConfig) models.Tool {
+	tool := mcp.NewTool("get_search_motorcycle_auto-complete",
+		mcp.WithDescription("API for auto-completion of inputs"),
+		mcp.WithString("api_key", mcp.Description("The API Authentication Key. Mandatory with all API calls.")),
+		mcp.WithString("field", mcp.Required(), mcp.Description("Field name for which you want auto-completion")),
+		mcp.WithString("input", mcp.Required(), mcp.Description("Input entered so far")),
+		mcp.WithString("year", mcp.Description("To filter listing on their year")),
+		mcp.WithString("make", mcp.Description("To filter listings on their make")),
+		mcp.WithString("model", mcp.Description("To filter listings on their model")),
+		mcp.WithString("trim", mcp.Description("To filter listing on their trim")),
+		mcp.WithString("body_type", mcp.Description("To filter listing on their body type")),
+		mcp.WithString("vehicle_type", mcp.Description("To filter listing on their vehicle type")),
+		mcp.WithString("transmission", mcp.Description("To filter listing on their transmission")),
+		mcp.WithString("drivetrain", mcp.Description("To filter listing on their drivetrain")),
+		mcp.WithString("fuel_type", mcp.Description("To filter listing on their fuel type")),
+		mcp.WithString("color", mcp.Description("Color of the vehicle")),
+		mcp.WithString("engine", mcp.Description("To filter listing on their engine")),
+		mcp.WithString("state", mcp.Description("To filter listing on State in which they are listed")),
+		mcp.WithString("city", mcp.Description("To filter listing on City in which they are listed")),
+		mcp.WithString("inventory_type", mcp.Description("To filter listing on their condition. Either used or new")),
+		mcp.WithBoolean("ignore_case", mcp.Description("Boolean variable to indicate ignore case of current input")),
+		mcp.WithBoolean("term_counts", mcp.Description("Boolean variable to indicate wheather to include term counts as well in response")),
+		mcp.WithString("sort_by", mcp.Description("Sort the response, either by index or count(default)")),
+		mcp.WithString("seller_type", mcp.Description("seller type for autocomplete")),
+		mcp.WithNumber("radius", mcp.Description("Radius around the search location (Unit - Miles)")),
+		mcp.WithString("zip", mcp.Description("To filter listing on ZIP around which they are listed")),
+		mcp.WithString("facet_min_count", mcp.Description("Provide minimum count value for facets")),
+	)
+
+	return models.Tool{
+		Definition: tool,
+		Handler:    Get_search_motorcycle_auto_completeHandler(cfg),
+	}
+}
